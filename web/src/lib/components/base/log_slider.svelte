@@ -13,51 +13,45 @@
   }
 
   let {
-    minValue = 1, // Start at 1 for log scale
+    minValue = 0,
     maxValue = 1000,
-    currentMin = $bindable(minValue),
-    currentMax = $bindable(maxValue),
+    currentMin = minValue,
+    currentMax = maxValue,
     onset,
     onupdate,
   }: Props = $props();
 
   let sliderContainer: any = $state();
+  const offset = 1; // To avoid log(0)
+
+  // Convert value to log scale with offset
+  const toLogScale = (value: number) => Math.log10(value + offset);
+  // Convert log scale back to value with offset
+  const fromLogScale = (value: number) => Math.pow(10, value) - offset;
 
   onMount(() => {
-    const updateValues = (values: string[]) => {
-      currentMin = parseFloat(values[0]);
-      currentMax = parseFloat(values[1]);
-      onupdate?.([currentMin, currentMax]);
-    };
-
-    noUiSlider.create(sliderContainer, {
-      start: [currentMin, currentMax],
+    const slider = noUiSlider.create(sliderContainer, {
+      start: [toLogScale(currentMin), toLogScale(currentMax)],
       connect: true,
       range: {
-        min: [Math.log10(minValue)],
-        max: [Math.log10(maxValue)],
+        min: toLogScale(minValue),
+        max: toLogScale(maxValue),
       },
-      // Use a logarithmic scale
-      scale: [
-        [0, Math.log10(minValue)],
-        [100, Math.log10(maxValue)],
-      ],
-      // Format values for display
       format: {
-        to: (value: number) => Math.pow(10, value).toFixed(0),
-        from: (value: number) => Math.log10(value),
+        to: (value: number) => fromLogScale(value).toFixed(0),
+        from: (value: number) => toLogScale(value),
       },
     });
 
-    sliderContainer.noUiSlider.on("update", (values: string[]) => {
+    slider.on("update", (values: string[]) => {
       const min = parseFloat(values[0]);
       const max = parseFloat(values[1]);
-      currentMin = Math.pow(10, min);
-      currentMax = Math.pow(10, max);
+      currentMin = fromLogScale(min);
+      currentMax = fromLogScale(max);
       onupdate?.([currentMin, currentMax]);
     });
 
-    sliderContainer.noUiSlider.on("set", () => {
+    slider.on("set", () => {
       onset?.([currentMin, currentMax]);
     });
   });
